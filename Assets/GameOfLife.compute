@@ -1,0 +1,52 @@
+// GameOfLife.compute
+// Thread group size 8x8 - adjust if you want different dispatch granularity.
+
+#pragma kernel CSMain
+
+// source and destination textures. We store alive state in .r channel (0.0 = dead, 1.0 = alive)
+Texture2D<float4> _Source;
+RWTexture2D<float4> _Dest;
+
+int _Width;
+int _Height;
+
+// B3/S23 is hard-coded here. You can generalize if needed.
+[numthreads(8, 8, 1)]
+void CSMain(uint3 id : SV_DispatchThreadID)
+{
+    int x = (int) id.x;
+    int y = (int) id.y;
+
+    if (x >= _Width || y >= _Height)
+        return;
+
+    int aliveNeighbors = 0;
+
+    // iterate neighbors, do bounds checks (no wrap)
+    for (int oy = -1; oy <= 1; oy++)
+    {
+        for (int ox = -1; ox <= 1; ox++)
+        {
+            if (ox == 0 && oy == 0)
+                continue;
+            int nx = x + ox;
+            int ny = y + oy;
+            if (nx < 0 || ny < 0 || nx >= _Width || ny >= _Height)
+                continue;
+            float4 sample = _Source.Load(int3(nx, ny, 0));
+            // alive if red channel > 0.5
+            aliveNeighbors += (sample.r > 0.5) ? 1 : 0;
+        }
+    }
+
+    float4 cur = _Source.Load(int3(x, y, 0));
+    bool alive = cur.r > 0.5;
+
+    bool nextAlive = false;
+    if (!alive && aliveNeighbors == 3)
+        nextAlive = true; // birth
+    else if (alive && (aliveNeighbors == 2 || aliveNeighbors == 3))
+        nextAlive = true; // survive
+
+    _Dest[int2(x, y)] = float4(nextAlive ? 1.0 : 0.0, nextAlive ? 1.0 : 0.0, nextAlive ? 1.0 : 0.0, 1.0);
+}
