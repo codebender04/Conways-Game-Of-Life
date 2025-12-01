@@ -27,13 +27,13 @@ public class CameraController : MonoBehaviour
 
     private void HandlePan()
     {
-        if (Input.GetMouseButtonDown(0))
+        if (Input.GetMouseButtonDown(2))
         {
             // Record the world position where the drag started
             dragOrigin = Camera.main.ScreenToWorldPoint(Input.mousePosition);
         }
 
-        if (Input.GetMouseButton(0))
+        if (Input.GetMouseButton(2))
         {
             Vector3 difference = dragOrigin - Camera.main.ScreenToWorldPoint(Input.mousePosition);
             Camera.main.transform.position += difference;

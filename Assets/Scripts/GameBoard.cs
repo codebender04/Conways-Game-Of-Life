@@ -2,6 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Tilemaps;
+using UnityEngine.UI;
 
 public class GameBoard : MonoBehaviour
 {
@@ -12,6 +13,7 @@ public class GameBoard : MonoBehaviour
     // (optional) deadTile is not needed; we'll clear empty cells by setting null
 
     [Header("Pattern & Timing")]
+    [SerializeField] private Slider updateIntervalSlider;
     [SerializeField] private float updateInterval = 0.05f;
 
     [Header("Camera Fit")]
@@ -35,6 +37,10 @@ public class GameBoard : MonoBehaviour
         aliveCells = new HashSet<Vector3Int>();
         cellsToCheck = new HashSet<Vector3Int>();
         if (targetCamera == null) targetCamera = Camera.main;
+        updateIntervalSlider.onValueChanged.AddListener((value) =>
+        {
+            updateInterval = value;
+        });
     }
 
     private void Start()
