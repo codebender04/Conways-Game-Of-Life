@@ -1,12 +1,16 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.Tilemaps;
 using UnityEngine.UI;
 
 public class GameBoard : MonoBehaviour
 {
     public static GameBoard Instance;
+    public event Action OnIterationsChanged;
+    public event Action OnPopulationChanged;
     [Header("Tilemap & Tiles")]
     [SerializeField] private Tilemap currentState; // assign an empty Tilemap
     [SerializeField] private Tile aliveTile;
@@ -23,7 +27,7 @@ public class GameBoard : MonoBehaviour
 
     private Pattern pattern;
     // public stats
-    public int Populations { get; private set; }
+    public int Population { get; private set; }
     public int Iterations { get; private set; }
     public float TimeElapsed { get; private set; }
 
@@ -57,22 +61,34 @@ public class GameBoard : MonoBehaviour
     }
 
     #region Pattern / Board setup
-    private void ClearBoard()
+    public void ClearBoard()
     {
         currentState.ClearAllTiles();
         aliveCells.Clear();
         cellsToCheck.Clear();
-        Populations = 0;
+        Population = 0;
         Iterations = 0;
         TimeElapsed = 0f;
+        OnPopulationChanged?.Invoke();
+        OnIterationsChanged?.Invoke();
+        if (simulateCoroutine != null) StopCoroutine(simulateCoroutine);
+        simulateCoroutine = null;
     }
     public void ResetPattern()
     {
         SetPattern(pattern);
+        Iterations = 0;
+        OnIterationsChanged?.Invoke();
     }
     public void SetPattern(Pattern patternToPlace)
     {
-        if (patternToPlace == null) return;
+        if (patternToPlace == null)
+        {
+            if (simulateCoroutine != null) StopCoroutine(simulateCoroutine);
+            simulateCoroutine = null;
+
+            return;
+        }
         pattern = patternToPlace;
         ClearBoard();
 
@@ -85,8 +101,50 @@ public class GameBoard : MonoBehaviour
             aliveCells.Add(cell);
         }
 
-        Populations = aliveCells.Count;
+        Population = aliveCells.Count;
+        OnPopulationChanged?.Invoke();
         FitCameraToPattern(patternToPlace);
+    }
+    #endregion
+    private void Update()
+    {
+        if (simulateCoroutine != null && Input.GetMouseButton(0))
+            return;  // Prevent drawing while Right-mouse dragging camera
+
+        HandleMouseDrawing();
+    }
+
+    #region Drawing with mouse
+    private void HandleMouseDrawing()
+    {
+        // Don't draw if pointer is OVER UI (buttons, sliders, etc.)
+        if (EventSystem.current != null && EventSystem.current.IsPointerOverGameObject())
+            return;
+
+        if (targetCamera == null) return;
+
+        if (Input.GetMouseButton(0))
+        {
+            Vector3 mouseWorld = targetCamera.ScreenToWorldPoint(Input.mousePosition);
+            Vector3Int cell = currentState.WorldToCell(mouseWorld);
+
+            if (!aliveCells.Contains(cell))
+            {
+                aliveCells.Add(cell);
+                currentState.SetTile(cell, aliveTile);
+            }
+        }
+
+        if (Input.GetMouseButton(1))
+        {
+            Vector3 mouseWorld = targetCamera.ScreenToWorldPoint(Input.mousePosition);
+            Vector3Int cell = currentState.WorldToCell(mouseWorld);
+
+            if (aliveCells.Remove(cell))
+            {
+                currentState.SetTile(cell, null);
+            }
+        }
     }
     #endregion
 
@@ -129,6 +187,7 @@ public class GameBoard : MonoBehaviour
     }
     public void StopSimulate()
     {
+        if (simulateCoroutine == null) return;
         StopCoroutine(simulateCoroutine);
     }
     private IEnumerator Simulate()
@@ -146,8 +205,10 @@ public class GameBoard : MonoBehaviour
     public void UpdateNextState()
     {
         UpdateState();
-        Populations = aliveCells.Count;
+        Population = aliveCells.Count;
+        OnPopulationChanged?.Invoke();
         Iterations++;
+        OnIterationsChanged?.Invoke();
         TimeElapsed += updateInterval;
     }
     private void UpdateState()

@@ -6,9 +6,12 @@ public class CanvasMain : MonoBehaviour
 {
     [SerializeField] private GameBoard gameBoard;
 
+    [SerializeField] private TextMeshProUGUI iterationsText;
+    [SerializeField] private TextMeshProUGUI populationText;
     [SerializeField] private Button runStopButton;
     [SerializeField] private TextMeshProUGUI runStopText;
     [SerializeField] private Button resetButton;
+    [SerializeField] private Button clearButton;
     [SerializeField] private Button nextButton;
     [SerializeField] private Button patternsButton;
     [SerializeField] private GameObject panelPatternSelection;
@@ -32,6 +35,14 @@ public class CanvasMain : MonoBehaviour
         resetButton.onClick.AddListener(() =>
         {
             gameBoard.ResetPattern();
+            runStopText.text = "RUN";
+            isRun = true;
+        });
+        clearButton.onClick.AddListener(() =>
+        {
+            gameBoard.ClearBoard();
+            runStopText.text = "RUN";
+            isRun = true;
         });
         nextButton.onClick.AddListener(() =>
         {
@@ -47,6 +58,21 @@ public class CanvasMain : MonoBehaviour
             {
                 panelPatternSelection.SetActive(true);
             }
+            runStopText.text = "RUN";
+            isRun = true;
         });
+        gameBoard.OnIterationsChanged += GameBoard_OnIterationsChanged;
+        gameBoard.OnPopulationChanged += GameBoard_OnPopulationChanged;
     }
+
+    private void GameBoard_OnPopulationChanged()
+    {
+        populationText.text = $"Population: {gameBoard.Population}";
+    }
+
+    private void GameBoard_OnIterationsChanged()
+    {
+        iterationsText.text = $"Iterations: {gameBoard.Iterations}";
+    }
+
 }
